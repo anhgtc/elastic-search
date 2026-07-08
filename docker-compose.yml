@@ -30,7 +30,8 @@ services:
     environment:
       APP_MODE: api
     ports:
-      - "${HTTP_PORT:-3000}:3000"
+      # Cổng host:container đi cùng nhau theo HTTP_PORT (app trong container cũng nghe HTTP_PORT)
+      - "${HTTP_PORT:-3000}:${HTTP_PORT:-3000}"
     depends_on:
       - redis
 
