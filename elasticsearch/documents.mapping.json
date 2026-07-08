@@ -1,0 +1,135 @@
+{
+  "settings": {
+    "index": {
+      "number_of_shards": 8,
+      "number_of_replicas": 1,
+      "max_result_window": 50000,
+      "refresh_interval": "5s"
+    },
+    "analysis": {
+      "analyzer": {
+        "vi_text": {
+          "type": "custom",
+          "tokenizer": "icu_tokenizer",
+          "filter": ["lowercase", "icu_folding"]
+        }
+      },
+      "normalizer": {
+        "vi_keyword": {
+          "type": "custom",
+          "filter": ["lowercase", "icu_folding"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "false",
+    "properties": {
+      "id": { "type": "keyword" },
+
+      "site_id": { "type": "keyword" },
+      "donvi_id": { "type": "keyword" },
+      "site_so_id": { "type": "keyword" },
+
+      "name": {
+        "type": "text",
+        "analyzer": "vi_text",
+        "fields": {
+          "sort": { "type": "keyword", "normalizer": "vi_keyword", "ignore_above": 512 },
+          "auto": { "type": "search_as_you_type", "analyzer": "vi_text" }
+        }
+      },
+      "other_name": { "type": "text", "analyzer": "vi_text" },
+      "slug": { "type": "keyword", "ignore_above": 512 },
+      "short_desc": { "type": "text", "analyzer": "vi_text" },
+      "full_desc": { "type": "text", "analyzer": "vi_text", "norms": false, "index_options": "freqs" },
+      "subject": { "type": "text", "analyzer": "vi_text" },
+      "author_sub": { "type": "text", "analyzer": "vi_text" },
+      "meta_text": { "type": "text", "analyzer": "vi_text", "norms": false },
+      "marc21_code": { "type": "text", "analyzer": "vi_text", "norms": false },
+
+      "issn": { "type": "keyword" },
+      "isbn": { "type": "keyword" },
+      "serial_number": { "type": "keyword" },
+      "identifier": { "type": "keyword" },
+      "so_tapchi": { "type": "keyword" },
+
+      "publisher_id": { "type": "keyword" },
+      "publisher_name": {
+        "type": "text",
+        "analyzer": "vi_text",
+        "fields": { "keyword": { "type": "keyword", "ignore_above": 512 } }
+      },
+
+      "authors": { "type": "object", "properties": {
+        "id":   { "type": "keyword", "eager_global_ordinals": true },
+        "name": { "type": "text", "analyzer": "vi_text" }
+      } },
+      "categories": { "type": "object", "properties": {
+        "id":   { "type": "keyword", "eager_global_ordinals": true },
+        "name": { "type": "text", "analyzer": "vi_text" }
+      } },
+      "genres": { "type": "object", "properties": {
+        "id":   { "type": "keyword", "eager_global_ordinals": true },
+        "name": { "type": "text", "analyzer": "vi_text" }
+      } },
+      "tags": { "type": "object", "properties": {
+        "id":   { "type": "keyword" },
+        "name": { "type": "text", "analyzer": "vi_text" }
+      } },
+
+      "collection_ids": { "type": "keyword" },
+
+      "document_lang_id": { "type": "keyword", "eager_global_ordinals": true },
+      "lang_name": { "type": "keyword" },
+
+      "khoi_ids": { "type": "keyword", "eager_global_ordinals": true },
+      "mon_ids": { "type": "keyword", "eager_global_ordinals": true },
+      "faculty_ids": { "type": "keyword" },
+      "major_ids": { "type": "keyword" },
+
+      "document_storage_ids": { "type": "keyword" },
+      "file_type_ids": { "type": "keyword", "eager_global_ordinals": true },
+      "document_type_id": { "type": "keyword" },
+
+      "tickets": { "type": "object", "properties": {
+        "id":   { "type": "keyword" },
+        "code": { "type": "keyword" },
+        "name": { "type": "text", "analyzer": "vi_text" },
+        "type": { "type": "keyword", "eager_global_ordinals": true }
+      } },
+
+      "is_tapchi": { "type": "integer" },
+      "loai_hinh_id": { "type": "keyword" },
+      "type_extra": { "type": "integer" },
+      "status": { "type": "integer" },
+      "status_share": { "type": "integer" },
+      "is_download": { "type": "integer" },
+      "is_share": { "type": "integer" },
+
+      "cover_id": { "type": "keyword", "index": false },
+      "color": { "type": "keyword", "index": false },
+      "partner_id": { "type": "keyword", "index": false },
+      "partner_document_id": { "type": "keyword", "index": false },
+      "symbol_id": { "type": "keyword", "index": false },
+      "tapchi_id": { "type": "keyword" },
+
+      "release_date": { "type": "keyword", "ignore_above": 64 },
+      "published_date": { "type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis", "ignore_malformed": true },
+      "created_date": { "type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis", "ignore_malformed": true },
+      "updated_date": { "type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis", "ignore_malformed": true },
+
+      "paper_count": { "type": "integer" },
+      "count_view": { "type": "integer" },
+      "count_readed": { "type": "integer" },
+      "count_download": { "type": "integer" },
+      "count_like": { "type": "integer" },
+      "count_comment": { "type": "integer" },
+      "avg_score_rate": { "type": "float" },
+
+      "popularity": { "type": "rank_feature" },
+      "rating": { "type": "rank_feature" },
+      "downloads": { "type": "rank_feature" }
+    }
+  }
+}

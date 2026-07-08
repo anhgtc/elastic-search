@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.log
+
+# Biến môi trường thật — KHÔNG commit
+.env
+.env.local
+.env.*.local
+
+# ES/Kibana data volume (nếu bind mount local)
+.esdata/

@@ -1,0 +1,114 @@
+# ============================================================================
+#  TVS SEARCH SERVICE — Docker Compose
+#
+#  Chạy DEV (kèm Elasticsearch + Kibana local để thử ngay):
+#     docker compose --profile dev up -d --build
+#
+#  Chạy PROD (chỉ app + redis, ES trỏ ra hạ tầng ngoài qua .env):
+#     docker compose up -d --build
+#
+#  Chạy full reindex 1 lần:
+#     docker compose run --rm reindex
+# ============================================================================
+
+x-app-build: &app-build
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: tvs-search-service:latest
+  env_file: .env
+  restart: unless-stopped
+  extra_hosts:
+    # Cho phép container truy cập MySQL gốc chạy trên máy host (dev)
+    - "host.docker.internal:host-gateway"
+
+services:
+  # ---- REST API tìm kiếm ----
+  search-api:
+    <<: *app-build
+    container_name: tvs_search_api
+    environment:
+      APP_MODE: api
+    ports:
+      - "${HTTP_PORT:-3000}:3000"
+    depends_on:
+      - redis
+
+  # ---- Worker PULL (TÙY CHỌN) — chỉ chạy khi cần đọc trực tiếp DB gốc.
+  #      Mặc định KHÔNG chạy; bật bằng: docker compose --profile pull up -d
+  sync-worker:
+    <<: *app-build
+    container_name: tvs_search_worker
+    profiles: ["pull"]
+    environment:
+      APP_MODE: worker
+    depends_on:
+      - redis
+
+  # ---- Full reindex (chạy thủ công: docker compose run --rm reindex) ----
+  reindex:
+    <<: *app-build
+    container_name: tvs_search_reindex
+    environment:
+      APP_MODE: reindex
+    restart: "no"
+    profiles: ["tools"]
+    depends_on:
+      - redis
+
+  # ---- Redis: checkpoint sync + cache suggest ----
+  redis:
+    image: redis:7-alpine
+    container_name: tvs_search_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT_EXPOSE:-6379}:6379"
+
+  # ---- Elasticsearch (CHỈ DEV — profile dev; image tùy biến có plugin ICU) ----
+  elasticsearch:
+    build:
+      context: ./elasticsearch
+      dockerfile: Dockerfile
+    image: tvs-search-elasticsearch:8.13.4-icu
+    container_name: tvs_search_es
+    profiles: ["dev"]
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\"' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
+  # ---- Kibana (CHỈ DEV — debug query DSL, xem index) ----
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    container_name: tvs_search_kibana
+    profiles: ["dev"]
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+volumes:
+  es_data:
+  redis_data:

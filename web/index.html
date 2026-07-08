@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TVS Search — Demo</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+      background: #0f172a; color: #e2e8f0; }
+    header { padding: 18px 24px; background: #1e293b; border-bottom: 1px solid #334155; }
+    header h1 { margin: 0; font-size: 18px; }
+    header small { color: #94a3b8; }
+    .wrap { max-width: 1000px; margin: 0 auto; padding: 20px; }
+    .searchbar { position: relative; }
+    #q { width: 100%; padding: 14px 16px; font-size: 18px; border-radius: 10px;
+      border: 1px solid #334155; background: #1e293b; color: #e2e8f0; }
+    #q:focus { outline: 2px solid #38bdf8; }
+    #suggest { position: absolute; top: 54px; left: 0; right: 0; z-index: 5;
+      background: #1e293b; border: 1px solid #334155; border-radius: 10px; overflow: hidden; display: none; }
+    #suggest div { padding: 10px 16px; cursor: pointer; border-bottom: 1px solid #334155; }
+    #suggest div:hover { background: #334155; }
+    .filters { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0; }
+    .filters input, .filters select { padding: 9px 12px; border-radius: 8px;
+      border: 1px solid #334155; background: #1e293b; color: #e2e8f0; }
+    .filters label { font-size: 12px; color: #94a3b8; display: block; margin-bottom: 3px; }
+    button { padding: 10px 20px; font-size: 15px; border: none; border-radius: 8px;
+      background: #38bdf8; color: #04293a; font-weight: 600; cursor: pointer; }
+    button:hover { background: #7dd3fc; }
+    .meta { color: #94a3b8; font-size: 13px; margin: 10px 0; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+      padding: 14px 16px; margin-bottom: 10px; }
+    .card h3 { margin: 0 0 4px; font-size: 16px; color: #f1f5f9; }
+    .card .sub { color: #94a3b8; font-size: 13px; }
+    .badges { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px;
+      background: #0f766e; color: #ccfbf1; }
+    .badge.tk { background: #7c3aed33; color: #ddd6fe; border: 1px solid #7c3aed88; }
+    .badge.sc { background: #334155; color: #fbbf24; }
+    .empty { color: #94a3b8; padding: 30px; text-align: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🔍 TVS Search — Demo</h1>
+    <small>Giao diện thử tìm kiếm gọi trực tiếp API (gõ tiếng Việt có dấu thoải mái)</small>
+  </header>
+  <div class="wrap">
+    <div class="searchbar">
+      <input id="q" placeholder="Gõ tên ấn phẩm, tác giả, chủ đề…" autocomplete="off" />
+      <div id="suggest"></div>
+    </div>
+
+    <div class="filters">
+      <div><label>site_id</label><input id="site" value="site1" size="10" /></div>
+      <div><label>donvi_id</label><input id="donvi" placeholder="(tuỳ chọn)" size="10" /></div>
+      <div><label>Tên phiếu</label><input id="ticketName" placeholder="vd: nhập tháng 9" size="16" /></div>
+      <div><label>Loại phiếu</label>
+        <select id="ticketType">
+          <option value="">-- tất cả --</option>
+          <option value="import">Nhập</option>
+          <option value="borrow">Mượn</option>
+          <option value="inventory">Kiểm kê</option>
+          <option value="liquidation">Thanh lý</option>
+          <option value="preorder">Đặt mua</option>
+        </select>
+      </div>
+      <div><label>Sắp xếp</label>
+        <select id="sort">
+          <option value="">Liên quan</option>
+          <option value="newest">Mới nhất</option>
+          <option value="name_asc">Tên A→Z</option>
+          <option value="paper_count">Số bản</option>
+        </select>
+      </div>
+      <div style="align-self:flex-end"><button onclick="doSearch()">Tìm</button></div>
+    </div>
+
+    <div class="meta" id="meta"></div>
+    <div id="results"></div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const api = (path, body) => fetch(path, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then((r) => r.json());
+
+    function payload() {
+      const p = { site_id: $('site').value.trim(), t: $('q').value.trim() };
+      if ($('donvi').value.trim()) p.donvi_id = $('donvi').value.trim();
+      if ($('ticketName').value.trim()) p.ticket_name = $('ticketName').value.trim();
+      if ($('ticketType').value) p.ticket_type = $('ticketType').value;
+      if ($('sort').value) p.s = $('sort').value;
+      return p;
+    }
+
+    async function doSearch() {
+      $('suggest').style.display = 'none';
+      const t0 = performance.now();
+      let res;
+      try { res = await api('/search', payload()); }
+      catch (e) { $('meta').textContent = 'Lỗi gọi API: ' + e.message; return; }
+      const ms = Math.round(performance.now() - t0);
+      const total = res.paging ? res.paging.total : 0;
+      $('meta').textContent = `${total} kết quả · ${ms}ms`;
+      const box = $('results');
+      if (!res.data || !res.data.length) { box.innerHTML = '<div class="empty">Không có kết quả</div>'; return; }
+      box.innerHTML = res.data.map((d) => {
+        const authors = (d.authors || []).map((a) => a.name).filter(Boolean).join(', ');
+        const tickets = (d.tickets || []).map((t) => `<span class="badge tk">📋 ${esc(t.name)}</span>`).join('');
+        const score = d._score != null ? `<span class="badge sc">score ${d._score.toFixed(2)}</span>` : '';
+        return `<div class="card">
+          <h3>${esc(d.name || '(không tên)')} ${d.other_name ? '<span class="sub">/ ' + esc(d.other_name) + '</span>' : ''}</h3>
+          <div class="sub">${authors ? '✍️ ' + esc(authors) + ' · ' : ''}${esc(d.subject || '')}</div>
+          <div class="badges">
+            ${score}
+            <span class="badge">👁 ${d.count_view || 0}</span>
+            ${d.file_type_ids && d.file_type_ids.length ? '<span class="badge">' + esc(d.file_type_ids.join('/')) + '</span>' : ''}
+            ${tickets}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+    // Autocomplete
+    let timer = null;
+    $('q').addEventListener('input', () => {
+      clearTimeout(timer);
+      const t = $('q').value.trim();
+      if (t.length < 2) { $('suggest').style.display = 'none'; return; }
+      timer = setTimeout(async () => {
+        try {
+          const res = await api('/suggest', { site_id: $('site').value.trim(), t });
+          const items = res.data || [];
+          if (!items.length) { $('suggest').style.display = 'none'; return; }
+          $('suggest').innerHTML = items.map((x) => `<div onclick="pick('${esc(x.name).replace(/'/g, '')}')">${esc(x.name)}</div>`).join('');
+          $('suggest').style.display = 'block';
+        } catch (e) {}
+      }, 250);
+    });
+    $('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+    function pick(name) { $('q').value = name; $('suggest').style.display = 'none'; doSearch(); }
+
+    doSearch();
+  </script>
+</body>
+</html>
